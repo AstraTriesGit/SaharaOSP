@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package Buyer;
+
+option csharp_namespace = "Marketplace";
+
+service BuyerToMarket {
+  rpc SearchItem (SearchItemRequest) returns (SearchItemResponse);
+  rpc BuyItem (BuyItemRequest) returns (BuyItemResponse);
+  rpc AddToWishList (WishListRequest) returns (WishListResponse);
+  rpc RateItem (RateItemRequest) returns (RateItemResponse);
+}
+
+message SearchItemRequest {
+  string name = 1;
+  string category = 2;
+}
+message SearchItemResponse{
+  
+}
+
+message BuyItemRequest {
+  int32 id = 1;
+  int32 quantity = 2;
+  string buyerAddress = 3;
+      
+}
+message BuyItemResponse {
+  string status = 1;
+}
+
+message WishListRequest {
+  int32 id = 1;
+  string buyer_address = 2;
+}
+message WishListResponse {
+  string status = 1;
+}
+
+message RateItemRequest {
+  int32 id = 1;
+  string buyer_address = 2;
+}
+message RateItemResponse {
+  string status = 1;
+}
+
