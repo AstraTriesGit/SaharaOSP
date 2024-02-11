@@ -1,8 +1,6 @@
 syntax = "proto3";
 
-package Buyer;
-
-option csharp_namespace = "Marketplace";
+package RpcComm.buyer;
 
 service BuyerToMarket {
   rpc SearchItem (SearchItemRequest) returns (SearchItemResponse);

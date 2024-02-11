@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="dotnet-shopping" uuid="55183b58-ad17-4e61-9fea-f8384d8311f8">
+      <driver-ref>cloudspanner</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.google.cloud.spanner.jdbc.JdbcDriver</jdbc-driver>
+      <jdbc-url>jdbc:cloudspanner:/projects/ethereal-pride-413807/instances/dotnet-shopping/databases/dotnet-shopping</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="credentials" value="$PROJECT_DIR$/Seller/ethereal-pride-413807-8be13f50387b.json" />
+      </jdbc-additional-properties>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+  </component>
+</project>

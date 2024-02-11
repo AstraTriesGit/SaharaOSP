@@ -1,8 +1,6 @@
 syntax = "proto3";
 
-package Seller;
-
-option csharp_namespace = "Marketplace";
+package RpcComm.seller;
 
 service SellerToMarket {
   rpc RegisterSeller (RegisterSellerRequest) returns (RegisterSellerResponse);
