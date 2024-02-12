@@ -5,6 +5,7 @@
  */
 
 using Grpc.Core;
+using RpcComm;
 using RpcComm.Seller;
 using Marketplace.Models;
 
@@ -103,22 +104,22 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
     {
         _logger.LogInformation(@"Delete Item {} request from {}", request.Id, request.Address);
         var seller = new Seller(request.Address, request.Uuid);
-        if (!Market.SellerInventory.ContainsKey(seller))
+        if (!Market.SellerInventory.TryGetValue(seller, out var value))
         {
             _logger.LogWarning(@"Delete Item {} request from {} failed: " + 
                 "Seller not found", request.Id, request.Address);
             return Task.FromResult(new DeleteItemResponse { Status = "FAIL" });
         }
         
-        if (Market.SellerInventory[seller].Where(product => product.Id == request.Id).ToHashSet().Count == 0)
+        if (value.Where(product => product.Id == request.Id).ToHashSet().Count == 0)
         {
             _logger.LogWarning("Delete Item {} request from {} failed: " +
                                "Product with Id not found",request.Id, request.Address);
             return Task.FromResult(new DeleteItemResponse { Status = "FAIL" });
         }
-        foreach (var product in Market.SellerInventory[seller].Where(product => product.Id == request.Id))
+        foreach (var product in value.Where(product => product.Id == request.Id))
         {
-            Market.SellerInventory[seller].Remove(product);
+            value.Remove(product);
         }
         _logger.LogDebug("Delete Item {} request from {} succeeded", request.Id, request.Address);
         return Task.FromResult(new DeleteItemResponse { Status = "SUCCESS" });

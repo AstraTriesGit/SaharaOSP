@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "category.proto";
+
 package RpcComm.buyer;
 
 service BuyerToMarket {
@@ -11,10 +13,11 @@ service BuyerToMarket {
 
 message SearchItemRequest {
   string name = 1;
-  string category = 2;
+  Category category = 2;
 }
 message SearchItemResponse{
-  
+  string items = 1;
+  string status = 2;
 }
 
 message BuyItemRequest {
@@ -38,6 +41,7 @@ message WishListResponse {
 message RateItemRequest {
   int32 id = 1;
   string buyer_address = 2;
+  int32 rating = 3;
 }
 message RateItemResponse {
   string status = 1;

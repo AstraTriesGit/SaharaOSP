@@ -1,4 +1,4 @@
-using RpcComm.Seller;
+using RpcComm;
 
 namespace Marketplace.Models;
 
@@ -15,6 +15,7 @@ public class Product
 
     internal int Id;
     internal decimal Rating;
+    internal int NoOfRatings = 0;
 
     public Product(string productName, Category category, int quantity, string description,
         string sellerAddress, decimal pricePerUnit)

@@ -1,13 +1,8 @@
 syntax = "proto3";
 
-package RpcComm.seller;
+import "category.proto";
 
-enum Category {
-    Electronics = 0;
-    Fashion = 1;
-    Others = 2;
-    All = 3;
-}
+package RpcComm.seller;
 
 service SellerToMarket {
   rpc RegisterSeller (RegisterSellerRequest) returns (RegisterSellerResponse);

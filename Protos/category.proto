@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package RpcComm;
+
+enum Category {
+  Electronics = 0;
+  Fashion = 1;
+  Others = 2;
+  All = 3;
+}
