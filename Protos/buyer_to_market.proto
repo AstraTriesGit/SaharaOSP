@@ -6,7 +6,7 @@ package RpcComm.buyer;
 
 service BuyerToMarket {
   rpc SearchItem (SearchItemRequest) returns (SearchItemResponse);
-  rpc BuyItem (BuyItemRequest) returns (BuyItemResponse);
+  rpc BuyItem (stream BuyItemRequest) returns (stream BuyItemResponse);
   rpc AddToWishList (WishListRequest) returns (WishListResponse);
   rpc RateItem (RateItemRequest) returns (RateItemResponse);
 }
@@ -28,6 +28,7 @@ message BuyItemRequest {
 }
 message BuyItemResponse {
   string status = 1;
+  string buyer_address = 2;
 }
 
 message WishListRequest {

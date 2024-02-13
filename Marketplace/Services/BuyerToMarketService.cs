@@ -49,43 +49,29 @@ public class BuyerToMarketService : BuyerToMarket.BuyerToMarketBase
         return Task.FromResult(new SearchItemResponse{Items = output, Status = "SUCCESS"});
     }
 
-    public override Task<BuyItemResponse> BuyItem(BuyItemRequest request, ServerCallContext ctx)
+    public override async Task BuyItem(IAsyncStreamReader<BuyItemRequest> requestStream, IServerStreamWriter<BuyItemResponse> responseStream, ServerCallContext context)
     {
-        // fail on item not exist, fail on not having the quantity
-        _logger.LogInformation("Buy request {} of item {}, from {}",
-            request.Quantity, request.Id, request.BuyerAddress);
+        await foreach (var request in requestStream.ReadAllAsync())
+        {
+            _logger.LogInformation("Buy request {} of item {}[item id], from {}",
+                request.Quantity, request.Id, request.BuyerAddress);
+            var buyResponse = NotifySeller(request);
+            await responseStream.WriteAsync(buyResponse);
+        }
+    }
 
-        if (!Market.SellerInventory.Values.Any(
-                products => products.Any(product => product.Id == request.Id)
-                ))
+    private static BuyItemResponse NotifySeller(BuyItemRequest request)
+    {
+        foreach (var sellerInventory in Market.SellerInventory)
         {
-            _logger.LogWarning("Buy request {} of item {}, from {} failed: " +
-                               "Product with Id not found", 
-                request.Quantity, request.Id, request.BuyerAddress);
-            return Task.FromResult(new BuyItemResponse { Status = "FAIL" });
+            foreach (var product in sellerInventory.Value.Where(product => product.Id == request.Id))
+            {
+                product.Quantity -= request.Quantity;
+                break;
+            }
         }
-        if (Market.SellerInventory.Values.Any(
-                products => products.Any(
-                    product => product.Id == request.Id && product.Quantity < request.Quantity
-                )))
-        {
-            _logger.LogWarning("Buy request {} of item {}, from {} failed: " +
-                               "Quantity requested not available", 
-                request.Quantity, request.Id, request.BuyerAddress);
-            return Task.FromResult(new BuyItemResponse { Status = "FAIL" });
-        }
-        
-        // now finally update the product
-        foreach (var productToUpdate in Market.SellerInventory.Values.Select(productList => productList.FirstOrDefault(
-                     product => product.Id == request.Id)).OfType<Product>())
-        {
-            productToUpdate.Quantity -= request.Quantity;
-            break;
-        }
-        
-        _logger.LogDebug("Buy request {} of item {}, from {} succeeded",
-            request.Quantity, request.Id, request.BuyerAddress);
-        return Task.FromResult(new BuyItemResponse { Status = "SUCCESS" });
+
+        return new BuyItemResponse { BuyerAddress = request.BuyerAddress, Status = "SUCCESS"};
     }
 
     public override Task<WishListResponse> AddToWishList(WishListRequest request, ServerCallContext ctx)
@@ -178,4 +164,6 @@ public class BuyerToMarketService : BuyerToMarket.BuyerToMarketBase
         );
         return Task.FromResult(new RateItemResponse { Status = "FAIL" });
     }
+    
+    
 }

@@ -5,7 +5,6 @@
  */
 
 using Grpc.Core;
-using RpcComm;
 using RpcComm.Seller;
 using Marketplace.Models;
 
@@ -69,51 +68,64 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
         return Task.FromResult(new SellItemResponse{ Status = "SUCCESS" });
     }
 
-    /*
-     * 
-     */
-    public override Task<UpdateItemResponse> UpdateItem(UpdateItemRequest request, ServerCallContext ctx)
+    public override async Task UpdateItem(IAsyncStreamReader<UpdateItemRequest> requestStream, IServerStreamWriter<UpdateItemResponse> responseStream, ServerCallContext context)
     {
-        _logger.LogInformation("Update Item {} request from {}",request.Id, request.Address);
-
+        await foreach (var request in requestStream.ReadAllAsync())
+        {
+            _logger.LogInformation("Update Item {}[id] request from {}",
+                request.Id, request.Address);
+            UpdateItemInInventory(request);
+            var updatedProducts = NotifyBuyers(request);
+            foreach (var updatedProduct in updatedProducts)
+            {
+                await responseStream.WriteAsync(updatedProduct);
+            }
+        }
+    }
+    private static void UpdateItemInInventory(UpdateItemRequest request)
+    {
         var seller = new Seller(request.Address, request.Uuid);
-        if (!Market.SellerInventory.TryGetValue(seller, out var value))
-        {
-            _logger.LogWarning("Update Item {} request from {} failed: " +
-                                   "Seller not registered",request.Id, request.Address);
-            return Task.FromResult(new UpdateItemResponse { Status = "FAIL" });
-        }
-
-        if (Market.SellerInventory[seller].Where(product => product.Id == request.Id).ToHashSet().Count == 0)
-        {
-            _logger.LogWarning("Update Item {} request from {} failed: " +
-                "Product with Id not found",request.Id, request.Address);
-            return Task.FromResult(new UpdateItemResponse { Status = "FAIL" });
-        }
         foreach (var product in Market.SellerInventory[seller].Where(product => product.Id == request.Id))
         {
-            product.PricePerUnit = request.NewPrice;
+            product.PricePerUnit = new decimal(request.NewPrice);
             product.Quantity = request.NewQuantity;
         }
-        
-        _logger.LogDebug("Update Item {} request from {} succeeded",request.Id, request.Address);
-        return Task.FromResult(new UpdateItemResponse { Status = "SUCCESS" });
+    }
+    private static List<UpdateItemResponse> NotifyBuyers(UpdateItemRequest request)
+    {
+        List<UpdateItemResponse> updatedProducts = [];
+        foreach (var buyerWishlist in Market.Wishlists)
+        {
+            foreach (var product in buyerWishlist.Value.Where(product => product.Id == request.Id))
+            {
+                // Update the price in the wishlist
+                product.PricePerUnit = new decimal(request.NewPrice);
+
+                // Prepare response for the buyer
+                updatedProducts.Add(new UpdateItemResponse
+                {
+                    BuyerId = buyerWishlist.Key.Address
+                });
+            }
+        }
+
+        return updatedProducts;
     }
 
     public override Task<DeleteItemResponse> DeleteItem(DeleteItemRequest request, ServerCallContext ctx)
     {
-        _logger.LogInformation(@"Delete Item {} request from {}", request.Id, request.Address);
+        _logger.LogInformation("_Delete Item {} request from {}", request.Id, request.Address);
         var seller = new Seller(request.Address, request.Uuid);
         if (!Market.SellerInventory.TryGetValue(seller, out var value))
         {
-            _logger.LogWarning(@"Delete Item {} request from {} failed: " + 
+            _logger.LogWarning("_Delete Item {} request from {} failed: " + 
                 "Seller not found", request.Id, request.Address);
             return Task.FromResult(new DeleteItemResponse { Status = "FAIL" });
         }
         
         if (value.Where(product => product.Id == request.Id).ToHashSet().Count == 0)
         {
-            _logger.LogWarning("Delete Item {} request from {} failed: " +
+            _logger.LogWarning("_Delete Item {} request from {} failed: " +
                                "Product with Id not found",request.Id, request.Address);
             return Task.FromResult(new DeleteItemResponse { Status = "FAIL" });
         }
@@ -121,7 +133,7 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
         {
             value.Remove(product);
         }
-        _logger.LogDebug("Delete Item {} request from {} succeeded", request.Id, request.Address);
+        _logger.LogDebug("_Delete Item {} request from {} succeeded", request.Id, request.Address);
         return Task.FromResult(new DeleteItemResponse { Status = "SUCCESS" });
     }
 
