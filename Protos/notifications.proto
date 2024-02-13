@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package RpcComm;
+
+service MarketNotification {
+  rpc UpdateItem (UpdateItemRequest) returns (stream UpdateItemResponse);
+  rpc BuyItem (BuyItemRequest) returns (stream BuyItemResponse);
+}
+
+message UpdateItemRequest {
+  int32 id = 1;
+  double new_price = 2;
+  int32 new_quantity = 3;
+  string address = 4;
+  string uuid = 5;
+}
+message UpdateItemResponse {
+  int32 id = 1;
+  double new_price = 2;
+  int32 new_quantity = 3;
+  string address = 4;
+  
+  string status = 5;
+  string buyer_id = 6;
+}
+
+message BuyItemRequest {
+  int32 id = 1;
+  int32 quantity = 2;
+  string buyerAddress = 3;
+
+}
+message BuyItemResponse {
+  string status = 1;
+  string buyer_address = 2;
+  int32 id = 3;
+  int32 quantity = 4;
+}

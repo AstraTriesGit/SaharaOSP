@@ -49,30 +49,30 @@ public class BuyerToMarketService : BuyerToMarket.BuyerToMarketBase
         return Task.FromResult(new SearchItemResponse{Items = output, Status = "SUCCESS"});
     }
 
-    public override async Task BuyItem(IAsyncStreamReader<BuyItemRequest> requestStream, IServerStreamWriter<BuyItemResponse> responseStream, ServerCallContext context)
-    {
-        await foreach (var request in requestStream.ReadAllAsync())
-        {
-            _logger.LogInformation("Buy request {} of item {}[item id], from {}",
-                request.Quantity, request.Id, request.BuyerAddress);
-            var buyResponse = NotifySeller(request);
-            await responseStream.WriteAsync(buyResponse);
-        }
-    }
-
-    private static BuyItemResponse NotifySeller(BuyItemRequest request)
-    {
-        foreach (var sellerInventory in Market.SellerInventory)
-        {
-            foreach (var product in sellerInventory.Value.Where(product => product.Id == request.Id))
-            {
-                product.Quantity -= request.Quantity;
-                break;
-            }
-        }
-
-        return new BuyItemResponse { BuyerAddress = request.BuyerAddress, Status = "SUCCESS"};
-    }
+    // public override async Task BuyItem(IAsyncStreamReader<BuyItemRequest> requestStream, IServerStreamWriter<BuyItemResponse> responseStream, ServerCallContext context)
+    // {
+    //     await foreach (var request in requestStream.ReadAllAsync())
+    //     {
+    //         _logger.LogInformation("Buy request {} of item {}[item id], from {}",
+    //             request.Quantity, request.Id, request.BuyerAddress);
+    //         var buyResponse = NotifySeller(request);
+    //         await responseStream.WriteAsync(buyResponse);
+    //     }
+    // }
+    //
+    // private static BuyItemResponse NotifySeller(BuyItemRequest request)
+    // {
+    //     foreach (var sellerInventory in Market.SellerInventory)
+    //     {
+    //         foreach (var product in sellerInventory.Value.Where(product => product.Id == request.Id))
+    //         {
+    //             product.Quantity -= request.Quantity;
+    //             break;
+    //         }
+    //     }
+    //
+    //     return new BuyItemResponse { BuyerAddress = request.BuyerAddress, Status = "SUCCESS"};
+    // }
 
     public override Task<WishListResponse> AddToWishList(WishListRequest request, ServerCallContext ctx)
     {

@@ -7,6 +7,8 @@ public static class SellerMenu
 {
     public static SellerToMarket.SellerToMarketClient Client = null!;
     public static Marketplace.Models.Seller CurrentSeller = null!;
+    public static MarketNotification.MarketNotificationClient NotificationClient = null!;
+    
     private static bool _run = true;
     private const string Menu =
         """
@@ -121,28 +123,6 @@ public static class SellerMenu
         Console.Write("Enter the new quantity: ");
         var quantity = int.Parse(Console.ReadLine()!);
         
-        
-        
-        var updateTask = Task.Run(async () =>
-        {
-            try
-            {
-                var call = Client.UpdateItem();
-                await call.RequestStream.WriteAsync(new UpdateItemRequest
-                {
-                    Address = CurrentSeller.Address,
-                    Uuid = CurrentSeller.Uuid,
-                    Id = id,
-                    NewPrice = price,
-                    NewQuantity = quantity
-                });
-                await call.RequestStream.CompleteAsync();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Something messed up just happened, seller!\n {e}");
-            }
-        });
     }
 
     private static async void DeleteItem()

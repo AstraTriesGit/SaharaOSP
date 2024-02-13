@@ -7,6 +7,8 @@ public static class BuyerMenu
 {
     public static BuyerToMarket.BuyerToMarketClient Client = null!;
     public static Marketplace.Models.Buyer CurrentBuyer = null!;
+    public static MarketNotification.MarketNotificationClient NotificationClient = null!;
+    
     private static bool _run = true;
     private const string Menu =
         """

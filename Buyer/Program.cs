@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using Buyer;
 using Grpc.Net.Client;
+using RpcComm;
 using RpcComm.Buyer;
 
 // It's an attempt to find the one public IPv4 address
@@ -15,7 +16,7 @@ list = list.Remove(IPAddress.Loopback);
 // Create seller credentials here
 var address = list[0].ToString();
 var uuid = Guid.NewGuid().ToString();
-Console.WriteLine($"You're connecting from {address} with uuid {uuid}");
+Console.WriteLine($"You're connecting from {address} with uuid {uuid}.");
 var buyer = new Marketplace.Models.Buyer(address);
 
 // create communication channels
@@ -23,34 +24,28 @@ using var channel = GrpcChannel.ForAddress("http://127.0.0.1:6969");
 var client = new BuyerToMarket.BuyerToMarketClient(channel);
 var cancellationTokenSource = new CancellationTokenSource();
 
-// set up the BuyerMenu object
 Console.WriteLine("Welcome to SaharaOSP.");
-BuyerMenu.CurrentBuyer = buyer;
-BuyerMenu.Client = client;
-BuyerMenu.BuyerMain();
 
-var senderTask = Task.Run(async () =>
+// set up notifs
+using var notificationChannel = GrpcChannel.ForAddress("http://127.0.0.1:6969");
+var notificationClient = new MarketNotification.MarketNotificationClient(notificationChannel);
+
+// Start a new task to listen for notifications when seller updates the products
+Task.Run(async () =>
 {
-    try
+    using var call = notificationClient.UpdateItem(null);
+    while (await call.ResponseStream.MoveNext(cancellationTokenSource.Token))
     {
-        
-    }
-    catch (Exception e)
-    {
-        Console.WriteLine(e);
-        throw;
+        var response = call.ResponseStream.Current;
+        // Handle the notification here
+        Console.WriteLine($"Product with id {response.Id} in your wishlist " +
+                          $"now selling at {response.NewPrice}. " +
+                          $"Only {response.NewQuantity} left!");
     }
 });
 
-// var receieverTask = Task.Run(async () =>
-// {
-//     try
-//     {
-//         await foreach (var update in client)
-//     }
-//     catch (Exception e)
-//     {
-//         Console.WriteLine(e);
-//         throw;
-//     }
-// });
+// set up the BuyerMenu object
+BuyerMenu.CurrentBuyer = buyer;
+BuyerMenu.Client = client;
+BuyerMenu.NotificationClient = notificationClient;
+BuyerMenu.BuyerMain();

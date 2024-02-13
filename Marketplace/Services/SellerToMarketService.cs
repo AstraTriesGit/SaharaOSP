@@ -68,49 +68,49 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
         return Task.FromResult(new SellItemResponse{ Status = "SUCCESS" });
     }
 
-    public override async Task UpdateItem(IAsyncStreamReader<UpdateItemRequest> requestStream, IServerStreamWriter<UpdateItemResponse> responseStream, ServerCallContext context)
-    {
-        await foreach (var request in requestStream.ReadAllAsync())
-        {
-            _logger.LogInformation("Update Item {}[id] request from {}",
-                request.Id, request.Address);
-            UpdateItemInInventory(request);
-            var updatedProducts = NotifyBuyers(request);
-            foreach (var updatedProduct in updatedProducts)
-            {
-                await responseStream.WriteAsync(updatedProduct);
-            }
-        }
-    }
-    private static void UpdateItemInInventory(UpdateItemRequest request)
-    {
-        var seller = new Seller(request.Address, request.Uuid);
-        foreach (var product in Market.SellerInventory[seller].Where(product => product.Id == request.Id))
-        {
-            product.PricePerUnit = new decimal(request.NewPrice);
-            product.Quantity = request.NewQuantity;
-        }
-    }
-    private static List<UpdateItemResponse> NotifyBuyers(UpdateItemRequest request)
-    {
-        List<UpdateItemResponse> updatedProducts = [];
-        foreach (var buyerWishlist in Market.Wishlists)
-        {
-            foreach (var product in buyerWishlist.Value.Where(product => product.Id == request.Id))
-            {
-                // Update the price in the wishlist
-                product.PricePerUnit = new decimal(request.NewPrice);
-
-                // Prepare response for the buyer
-                updatedProducts.Add(new UpdateItemResponse
-                {
-                    BuyerId = buyerWishlist.Key.Address
-                });
-            }
-        }
-
-        return updatedProducts;
-    }
+    // public override async Task UpdateItem(IAsyncStreamReader<UpdateItemRequest> requestStream, IServerStreamWriter<UpdateItemResponse> responseStream, ServerCallContext context)
+    // {
+    //     await foreach (var request in requestStream.ReadAllAsync())
+    //     {
+    //         _logger.LogInformation("Update Item {}[id] request from {}",
+    //             request.Id, request.Address);
+    //         UpdateItemInInventory(request);
+    //         var updatedProducts = NotifyBuyers(request);
+    //         foreach (var updatedProduct in updatedProducts)
+    //         {
+    //             await responseStream.WriteAsync(updatedProduct);
+    //         }
+    //     }
+    // }
+    // private static void UpdateItemInInventory(UpdateItemRequest request)
+    // {
+    //     var seller = new Seller(request.Address, request.Uuid);
+    //     foreach (var product in Market.SellerInventory[seller].Where(product => product.Id == request.Id))
+    //     {
+    //         product.PricePerUnit = new decimal(request.NewPrice);
+    //         product.Quantity = request.NewQuantity;
+    //     }
+    // }
+    // private static List<UpdateItemResponse> NotifyBuyers(UpdateItemRequest request)
+    // {
+    //     List<UpdateItemResponse> updatedProducts = [];
+    //     foreach (var buyerWishlist in Market.Wishlists)
+    //     {
+    //         foreach (var product in buyerWishlist.Value.Where(product => product.Id == request.Id))
+    //         {
+    //             // Update the price in the wishlist
+    //             product.PricePerUnit = new decimal(request.NewPrice);
+    //
+    //             // Prepare response for the buyer
+    //             updatedProducts.Add(new UpdateItemResponse
+    //             {
+    //                 BuyerId = buyerWishlist.Key.Address
+    //             });
+    //         }
+    //     }
+    //
+    //     return updatedProducts;
+    // }
 
     public override Task<DeleteItemResponse> DeleteItem(DeleteItemRequest request, ServerCallContext ctx)
     {
