@@ -10,4 +10,24 @@ public class Seller
         Address = address;
         Uuid = uuid;
     }
+
+    public override string ToString()
+    {
+        return Address + " " + Uuid;
+    }
+    
+    public override bool Equals(object? obj)
+    {
+        if (obj == null || GetType() != obj.GetType())
+        {
+            return false;
+        }
+
+        var p = (Seller) obj;
+        return Address == p.Address && Uuid == p.Uuid;
+    }
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Address, Uuid);
+    }
 }

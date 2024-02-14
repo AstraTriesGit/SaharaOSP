@@ -49,121 +49,87 @@ public class BuyerToMarketService : BuyerToMarket.BuyerToMarketBase
         return Task.FromResult(new SearchItemResponse{Items = output, Status = "SUCCESS"});
     }
 
-    // public override async Task BuyItem(IAsyncStreamReader<BuyItemRequest> requestStream, IServerStreamWriter<BuyItemResponse> responseStream, ServerCallContext context)
-    // {
-    //     await foreach (var request in requestStream.ReadAllAsync())
-    //     {
-    //         _logger.LogInformation("Buy request {} of item {}[item id], from {}",
-    //             request.Quantity, request.Id, request.BuyerAddress);
-    //         var buyResponse = NotifySeller(request);
-    //         await responseStream.WriteAsync(buyResponse);
-    //     }
-    // }
-    //
-    // private static BuyItemResponse NotifySeller(BuyItemRequest request)
-    // {
-    //     foreach (var sellerInventory in Market.SellerInventory)
-    //     {
-    //         foreach (var product in sellerInventory.Value.Where(product => product.Id == request.Id))
-    //         {
-    //             product.Quantity -= request.Quantity;
-    //             break;
-    //         }
-    //     }
-    //
-    //     return new BuyItemResponse { BuyerAddress = request.BuyerAddress, Status = "SUCCESS"};
-    // }
-
     public override Task<WishListResponse> AddToWishList(WishListRequest request, ServerCallContext ctx)
     {
-        _logger.LogInformation("Wishlist request of item {}, from {}",
+        _logger.LogInformation("Wishlist request of item {} from {}",
             request.Id, request.BuyerAddress);
         
-        // add buyer to wishlists if not done yet
-        var buyer = new Buyer(request.BuyerAddress);
-        if (!Market.Wishlists.TryGetValue(buyer, out var value))
+        // use Market.Buyers to find the buyer
+        var foundBuyer = Market.Buyers.FirstOrDefault(
+            b => b.Address == request.BuyerAddress
+        ); 
+        if (foundBuyer == null)
         {
-            value = [];
-            Market.Wishlists.Add(buyer, value);
+            foundBuyer = new Buyer(request.BuyerAddress);
+            Market.Buyers.Add(foundBuyer);
         }
         
-        // check if product exists
-        if (!Market.SellerInventory.Values.Any(
-                products => products.Any(product => product.Id == request.Id)
-            ))
+        var foundProduct = Market.SellerInventory
+            .SelectMany(kvp => kvp.Value)
+            .FirstOrDefault(product => product.Id == request.Id);
+        if (foundProduct != null)
         {
-            _logger.LogWarning("Wishlist request of item {}, from {} failed:" +
-                               "Product with Id not found",
+            if (!foundBuyer.Wishlist.Contains(foundProduct))
+            {
+                foundBuyer.Wishlist.Add(foundProduct);
+                
+                _logger.LogInformation("Wishlist request of item {} from {} succeeded",
+                    request.Id, request.BuyerAddress);
+                return Task.FromResult(new WishListResponse { Status = "SUCCESS" });
+            }
+            _logger.LogWarning("Wishlist request of item {} from {} failed: " +
+                               "Product already in wishlist",
                 request.Id, request.BuyerAddress);
             return Task.FromResult(new WishListResponse { Status = "FAIL" });
         }
         
-        // find that product
-        foreach (var wishlistProduct in Market.SellerInventory.Values.Select(productList => productList.FirstOrDefault(
-                     product => product.Id == request.Id
-                 )).OfType<Product>())
-        {
-            if (!value.Contains(wishlistProduct))
-            {
-                value.Add(wishlistProduct);
-            }
-            break;
-        }
-        
-        _logger.LogDebug("Wishlist request of item {}, from {} succeeded",
-                         request.Id, request.BuyerAddress);
-        return Task.FromResult(new WishListResponse { Status = "SUCCESS" });
+        _logger.LogWarning("Wishlist request of item {} from {} failed: " +
+                           "Product with Id not found",
+            request.Id, request.BuyerAddress);
+        return Task.FromResult(new WishListResponse { Status = "FAIL" });
     }
+    
 
     public override Task<RateItemResponse> RateItem(RateItemRequest request, ServerCallContext ctx)
     {
         _logger.LogInformation("{} rating item request for {}[id] with {} stars",
-            request.BuyerAddress, request.Id, request.Rating
-            );
+            request.BuyerAddress, request.Id, request.Rating);
         
-        
-        // add buyer to wishlists if not done yet
-        var buyer = new Buyer(request.BuyerAddress);
-        if (!Market.RatedProducts.TryGetValue(buyer, out var value))
+        // use Market.Buyers to find the buyer
+        var foundBuyer = Market.Buyers.FirstOrDefault(
+            b => b.Address == request.BuyerAddress
+            ); 
+        if (foundBuyer == null)
         {
-            value = [];
-            Market.RatedProducts.Add(buyer, value);
+            foundBuyer = new Buyer(request.BuyerAddress);
+            Market.Buyers.Add(foundBuyer);
         }
         
-        // check if product exists
-        if (!Market.SellerInventory.Values.Any(
-                products => products.Any(product => product.Id == request.Id)
-            ))
+        var foundProduct = Market.SellerInventory
+            .SelectMany(kvp => kvp.Value)
+            .FirstOrDefault(product => product.Id == request.Id);
+        if (foundProduct != null)
         {
+            if (!foundBuyer.RatedProducts.Contains(foundProduct))
+            {
+                foundProduct.Rating += (request.Rating - foundProduct.Rating) 
+                                       / ++foundProduct.NoOfRatings;
+                foundBuyer.RatedProducts.Add(foundProduct);
+                
+                _logger.LogInformation("{} rating item request for {}[id] with {} stars succeeded",
+                    request.BuyerAddress, request.Id, request.Rating);
+                return Task.FromResult(new RateItemResponse { Status = "SUCCESS" });
+            }
             _logger.LogWarning("{} rating item request for {}[id] with {} stars failed: " +
-                               "Product with Id not found",
-                request.BuyerAddress, request.Id, request.Rating
-            );
+                               "Product already rated",
+                request.BuyerAddress, request.Id, request.Rating);
             return Task.FromResult(new RateItemResponse { Status = "FAIL" });
         }
         
-        // now do the product updating
-        foreach (var productList in Market.SellerInventory.Values)
-        {
-            var productToRate = productList.FirstOrDefault(
-                product => product.Id == request.Id
-            );
-            if (productToRate == null) continue;
-            
-            // found you!
-            if (!Market.RatedProducts[buyer].Contains(productToRate))
-            {
-                productToRate.Rating += (request.Rating - productToRate.Rating) / ++productToRate.NoOfRatings;
-                Market.RatedProducts[buyer].Add(productToRate);
-            }
-            break;
-        }
-        
-        _logger.LogDebug("{} rating item request for {}[id] with {} stars succeeded ",
-            request.BuyerAddress, request.Id, request.Rating
-        );
+        _logger.LogWarning("{} rating item request for {}[id] with {} stars failed: " +
+                           "Product with Id not found",
+            request.BuyerAddress, request.Id, request.Rating);
         return Task.FromResult(new RateItemResponse { Status = "FAIL" });
-    }
-    
+    }    
     
 }

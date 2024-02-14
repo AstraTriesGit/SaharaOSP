@@ -44,7 +44,6 @@ Task.Run(async () =>
 });
 
 // set up the SellerMenu object
-Console.WriteLine("Welcome to SaharaOSP.");
 SellerMenu.CurrentSeller = seller;
 SellerMenu.Client = client;
 SellerMenu.NotificationClient = notificationClient;

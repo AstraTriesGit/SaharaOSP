@@ -1,9 +1,8 @@
 namespace Marketplace.Models;
 
-public class Market
+public static class Market
 {
-    public static Dictionary<Seller, List<Product>> SellerInventory = new();
-    public static Dictionary<Buyer, List<Product>> Wishlists = new();
-    public static Dictionary<Buyer, List<Product>> RatedProducts = new();
-    
+    public static readonly Dictionary<Seller, List<Product>> SellerInventory = new();
+    public static readonly List<Buyer> Buyers = [];
+
 }

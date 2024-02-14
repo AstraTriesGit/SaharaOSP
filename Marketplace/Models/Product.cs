@@ -6,14 +6,14 @@ public class Product
 {
     private static int _uniqueId = 1;
     
-    public string ProductName;
-    public Category Category;
+    public readonly string ProductName;
+    public readonly Category Category;
     public int Quantity;
-    public string Description;
-    public string SellerAddress;
+    public readonly string Description;
+    public readonly string SellerAddress;
     public decimal PricePerUnit;
 
-    internal int Id;
+    internal readonly int Id;
     internal decimal Rating;
     internal int NoOfRatings = 0;
 
@@ -45,5 +45,20 @@ public class Product
             "Rating: " + Rating
         ];
         return string.Join('\n', lines);
+    }
+    
+    public override bool Equals(object? obj)
+    {
+        if (obj is Product product)
+        {
+            return Id == product.Id;
+        }
+
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode();
     }
 }

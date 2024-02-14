@@ -51,6 +51,7 @@ public static class SellerMenu
                     Console.WriteLine("Invalid option entered!");
                     break;
             }
+            Thread.Sleep(2000);
         }
     }
 
@@ -88,7 +89,8 @@ public static class SellerMenu
             PricePerUnit = price,
             ProductName = name,
             Quantity = quantity,
-            SellerAddress = CurrentSeller.Address
+            SellerAddress = CurrentSeller.Address,
+            SellerUuid = CurrentSeller.Uuid
         });
         Console.WriteLine(reply.Status);
     }

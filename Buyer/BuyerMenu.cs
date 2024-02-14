@@ -47,8 +47,8 @@ public static class BuyerMenu
                     Console.WriteLine("Invalid option entered!");
                     break;
             }
+            Thread.Sleep(2000);
         }
-
     }
 
     private static async void SearchItems()
@@ -120,6 +120,7 @@ public static class BuyerMenu
         if (rating is < 1 or > 5)
         {
             Console.WriteLine("FAIL");
+            return;
         }
 
         var reply = await Client.RateItemAsync(new RateItemRequest

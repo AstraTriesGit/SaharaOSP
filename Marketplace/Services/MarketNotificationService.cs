@@ -51,36 +51,6 @@ public class MarketNotificationService : MarketNotification.MarketNotificationBa
 
     public override async Task UpdateItem(UpdateItemRequest request, IServerStreamWriter<UpdateItemResponse> responseStream, ServerCallContext context)
     {
-        _logger.LogInformation("Update Item {} request from {}",
-            request.Id, request.Address);
         
-        var productToUpdate = Market.SellerInventory.Values.SelectMany(products => products)
-            .FirstOrDefault(product => product.Id == request.Id);
-        if (productToUpdate != null)
-        {
-            productToUpdate.PricePerUnit = new decimal(request.NewPrice);
-            productToUpdate.Quantity = request.NewQuantity;
-            _logger.LogDebug("Update Item {} request from {} succeeded", request.Id, request.Address);
-            
-        }
-        else
-        {
-            _logger.LogWarning("Update Item {} request from {} failed: " + "Product with Id not found", request.Id,
-                request.Address);
-        }
-        
-        // find the buyers whose Market.Wishlists[buyer] contains productToUpdate using LINQ
-        var buyersToUpdate = Market.Wishlists.Where(wishlist => wishlist.Value.Contains(productToUpdate))
-            .Select(wishlist => wishlist.Key);
-        foreach (var buyer in buyersToUpdate)
-        {
-            await responseStream.WriteAsync(new UpdateItemResponse
-            {
-                BuyerId = buyer.Address,
-                Id = request.Id,
-                NewPrice = request.NewPrice,
-                NewQuantity = request.NewQuantity
-            });
-        }
     }
 }

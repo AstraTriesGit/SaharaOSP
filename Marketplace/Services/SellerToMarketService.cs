@@ -4,6 +4,7 @@
  * 4) Send response to seller.
  */
 
+using System.Diagnostics;
 using Grpc.Core;
 using RpcComm.Seller;
 using Marketplace.Models;
@@ -28,17 +29,18 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
     {
         _logger.LogInformation("Seller join request from {}, uuid = {}", request.Address, request.Uuid);
 
-        var seller = new Seller(request.Address, request.Uuid);
-        if (Market.SellerInventory.ContainsKey(seller))
+        var newSeller = new Seller(request.Address, request.Uuid);
+        
+        if (Market.SellerInventory.ContainsKey(newSeller))
         {
             _logger.LogWarning("Seller join request from {}, uuid = {} failed: " +
                                    "Seller already exists", request.Address, request.Uuid);
             return Task.FromResult(new RegisterSellerResponse { Status = "FAIL" });
         }
 
-        Market.SellerInventory.Add(seller, []);
+        Market.SellerInventory.Add(newSeller, []);
         
-        _logger.LogDebug("Seller join request from {}, uuid = {} succeeded", request.Address, request.Uuid);
+        _logger.LogInformation("Seller join request from {}, uuid = {} succeeded", request.Address, request.Uuid);
         return Task.FromResult(new RegisterSellerResponse { Status = "SUCCESS" });
 
     }
@@ -48,91 +50,51 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
      */
     public override Task<SellItemResponse> SellItem(SellItemRequest request, ServerCallContext ctx)
     {
-        _logger.LogInformation("Sell Item request from {}", request.SellerAddress);
+        _logger.LogInformation("Sell item request from {}, uuid = {}", request.SellerAddress, request.SellerUuid);
 
         var seller = new Seller(request.SellerAddress, request.SellerUuid);
-        if (!Market.SellerInventory.TryGetValue(seller, out var value))
+        
+        if (Market.SellerInventory.ContainsKey(seller))
         {
-            _logger.LogWarning("Sell Item request from {} failed: " +
-                               "Seller not found", request.SellerAddress);
-            return Task.FromResult(new SellItemResponse { Status = "FAIL" });
+            var newProduct = new Product(
+                request.ProductName, request.Category, request.Quantity,
+                request.Description, request.SellerAddress, new decimal(request.PricePerUnit)
+            );
+            Market.SellerInventory[seller].Add(newProduct);
+        
+            _logger.LogInformation("Sell Item request from {}, uuid = {} succeeded",
+                request.SellerAddress, request.SellerUuid);
+            return Task.FromResult(new SellItemResponse{ Status = "SUCCESS" });
         }
         
-        var newProduct = new Product(
-            request.ProductName, request.Category, request.Quantity,
-            request.Description, request.SellerAddress, new decimal(request.PricePerUnit)
-            );
-        value.Add(newProduct);
-        
-        _logger.LogDebug("Sell Item request from {}", request.SellerAddress);
-        return Task.FromResult(new SellItemResponse{ Status = "SUCCESS" });
+        _logger.LogInformation("Seller join request from {}, uuid = {} failed: " +
+                               "Seller not found",
+            request.SellerAddress, request.SellerUuid);
+        return Task.FromResult(new SellItemResponse { Status = "FAIL" });
     }
-
-    // public override async Task UpdateItem(IAsyncStreamReader<UpdateItemRequest> requestStream, IServerStreamWriter<UpdateItemResponse> responseStream, ServerCallContext context)
-    // {
-    //     await foreach (var request in requestStream.ReadAllAsync())
-    //     {
-    //         _logger.LogInformation("Update Item {}[id] request from {}",
-    //             request.Id, request.Address);
-    //         UpdateItemInInventory(request);
-    //         var updatedProducts = NotifyBuyers(request);
-    //         foreach (var updatedProduct in updatedProducts)
-    //         {
-    //             await responseStream.WriteAsync(updatedProduct);
-    //         }
-    //     }
-    // }
-    // private static void UpdateItemInInventory(UpdateItemRequest request)
-    // {
-    //     var seller = new Seller(request.Address, request.Uuid);
-    //     foreach (var product in Market.SellerInventory[seller].Where(product => product.Id == request.Id))
-    //     {
-    //         product.PricePerUnit = new decimal(request.NewPrice);
-    //         product.Quantity = request.NewQuantity;
-    //     }
-    // }
-    // private static List<UpdateItemResponse> NotifyBuyers(UpdateItemRequest request)
-    // {
-    //     List<UpdateItemResponse> updatedProducts = [];
-    //     foreach (var buyerWishlist in Market.Wishlists)
-    //     {
-    //         foreach (var product in buyerWishlist.Value.Where(product => product.Id == request.Id))
-    //         {
-    //             // Update the price in the wishlist
-    //             product.PricePerUnit = new decimal(request.NewPrice);
-    //
-    //             // Prepare response for the buyer
-    //             updatedProducts.Add(new UpdateItemResponse
-    //             {
-    //                 BuyerId = buyerWishlist.Key.Address
-    //             });
-    //         }
-    //     }
-    //
-    //     return updatedProducts;
-    // }
 
     public override Task<DeleteItemResponse> DeleteItem(DeleteItemRequest request, ServerCallContext ctx)
     {
-        _logger.LogInformation("_Delete Item {} request from {}", request.Id, request.Address);
+        _logger.LogInformation("_Delete Item {} request from {}, uuid = {}",
+            request.Id, request.Address, request.Uuid);
+
         var seller = new Seller(request.Address, request.Uuid);
         if (!Market.SellerInventory.TryGetValue(seller, out var value))
         {
-            _logger.LogWarning("_Delete Item {} request from {} failed: " + 
-                "Seller not found", request.Id, request.Address);
+            _logger.LogWarning("_Delete Item {} request from {}, uuid = {} failed: " +
+                               "Seller not found", request.Id, request.Address, request.Uuid);
             return Task.FromResult(new DeleteItemResponse { Status = "FAIL" });
         }
-        
-        if (value.Where(product => product.Id == request.Id).ToHashSet().Count == 0)
+
+        if (value.All(product => product.Id != request.Id))
         {
             _logger.LogWarning("_Delete Item {} request from {} failed: " +
                                "Product with Id not found",request.Id, request.Address);
             return Task.FromResult(new DeleteItemResponse { Status = "FAIL" });
         }
-        foreach (var product in value.Where(product => product.Id == request.Id))
-        {
-            value.Remove(product);
-        }
+
+        value.RemoveAll(product => product.Id == request.Id);
+
         _logger.LogDebug("_Delete Item {} request from {} succeeded", request.Id, request.Address);
         return Task.FromResult(new DeleteItemResponse { Status = "SUCCESS" });
     }
@@ -157,7 +119,7 @@ public class SellerToMarketService : SellerToMarket.SellerToMarketBase
             output += "\n______________\n";
         }
 
-        _logger.LogDebug("Display Items request from {} succeeded", request.Address);
+        _logger.LogInformation("Display Items request from {} succeeded", request.Address);
         return Task.FromResult(new DisplaySellerItemsResponse
         {
             Output = output,
